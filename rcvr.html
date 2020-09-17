@@ -1,0 +1,92 @@
+<html>
+<head>
+        
+<body class="initial">
+        <div class="messages">
+                <h1>Waiting for Messages...</h1>
+        </div>
+        <audio id="audio" controls="controls"></audio>
+</body>
+
+<script src="jquery-2.0.3.min.js"></script>
+<script src="https://www.gstatic.com/cast/js/receiver/1.0/cast_receiver.js"></script>
+<script>
+
+// Make XHR request for the pls file
+if (window.XMLHttpRequest) {
+    // code for IE7 +, Firefox, Chrome, Opera, Safari
+    xhr = new XMLHttpRequest();
+} else {
+    // code for IE6, IE5
+    xhr = new ActiveXObject("Microsoft.XMLHTTP");
+}
+xhr.open("GET", "http://provisioning.streamtheworld.com/pls/WSRVFM.pls", false);
+xhr.send();
+xhrDoc = xhr.responseText;
+
+var pls = {};
+
+// split into lines
+pls.Entries = xhrDoc.split("\n");
+
+pls.Items = [];
+pls.curItem = pls.Count = 0;
+pls.listOk = true;
+for (var i = 0; i < pls.Entries.length; i ++ ) {
+   text = pls.Entries[i];
+   matches = text.match(/^File(\d+)/);
+   if (matches) {
+      pls.Items[matches[1]-1] = text.split("=")[1];
+      pls.Count++;
+   }
+}
+// get the audio element
+pls.audio = document.getElementById("audio");
+
+// hook onEnded and onError events to jump to next PLS item
+pls.audio.addEventListener("error", audioEvent, false);
+pls.audio.addEventListener("ended", audioEvent, false);
+
+// load audio tag with first source
+pls.listOk = loadPLS(pls.curItem ++ );
+
+function audioEvent(event) {
+    // if the listOk is still true (ie not at the end of the list)
+    // step to the next item either on ended or error
+    if (pls.listOk) {
+        pls.listOk = loadPLS(pls.curItem ++ );
+    } else {
+        // action to indicate end of stream
+    }
+}
+
+function loadPLS(whichItem) {
+    if (whichItem >= pls.Count) {
+        return false;
+    } else {
+        pls.audio.autoplay = true;
+        pls.audio.src = pls.Items[whichItem];
+        document.getElementById("title").innerText = pls.Items[whichItem];
+        return true;
+    }
+}
+
+        $(function() {
+                var receiver = new cast.receiver.Receiver('93654086-387f-4c90-a6b4-d52940e288e2_1', ['CMG_tech']),
+                        channelHandler = new cast.receiver.ChannelHandler('CMG_tech'),
+                        $messages = $('.messages'),
+                        $body = $('body');
+
+                channelHandler.addChannelFactory(
+                        receiver.createChannelFactory('CMG_tech'));
+
+                receiver.start();
+
+                channelHandler.addEventListener(cast.receiver.Channel.EventType.MESSAGE, onMessage.bind(this));
+
+                function onMessage(event) {
+                        $messages.html(event.message.type);
+                }
+        });
+</script>
+</html>
